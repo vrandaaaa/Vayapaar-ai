@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% block title %}Settings — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-3xl mx-auto space-y-6">
+
+  <!-- Header -->
+  <div class="animate-fade-up">
+    <h1 class="text-2xl font-bold text-white">{{ t.settings }}</h1>
+    <p class="text-slate-400 text-sm mt-0.5">Manage your business profile and account</p>
+  </div>
+
+  <!-- ══ Business Profile ══ -->
+  <div class="glass-card p-6 animate-fade-up delay-1">
+    <div class="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
+      <div class="p-2 rounded-xl bg-brand-400/15 text-brand-400">
+        <i data-lucide="store" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-white">{{ t.business_profile }}</h2>
+        <p class="text-xs text-slate-500">This information appears on your invoices</p>
+      </div>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="action" value="profile"/>
+
+      <div class="grid grid-cols-2 gap-4">
+
+        <!-- Logo Upload -->
+        <div class="col-span-2 flex items-center gap-5">
+          <div class="w-20 h-20 rounded-2xl bg-brand-400/15 flex items-center justify-center
+                      overflow-hidden shrink-0 border border-white/10" id="logoPreviewWrap">
+            {% if tenant.logo_url %}
+            <img id="logoPreview" src="{{ tenant.logo_url }}" alt="Logo"
+                 class="w-full h-full object-cover"/>
+            {% else %}
+            <span id="logoPlaceholder" class="text-3xl font-black text-brand-400">
+              {{ tenant.business_name[0].upper() }}
+            </span>
+            <img id="logoPreview" class="w-full h-full object-cover hidden"/>
+            {% endif %}
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+              Business Logo
+            </label>
+            <input type="file" name="logo" id="logoInput" accept="image/*"
+              class="hidden" onchange="previewLogo(this)"/>
+            <label for="logoInput"
+              class="cursor-pointer px-4 py-2 border border-white/10 rounded-xl text-xs text-slate-400
+                     hover:bg-white/5 hover:text-white transition-all inline-flex items-center gap-2">
+              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+              Upload Logo
+            </label>
+            <p class="text-xs text-slate-600 mt-1.5">PNG, JPG, WEBP — max 16 MB</p>
+          </div>
+        </div>
+
+        <!-- Business Name -->
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            {{ t.business_name }} *
+          </label>
+          <input type="text" name="business_name"
+            value="{{ tenant.business_name }}" required maxlength="150"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+        </div>
+
+        <!-- Business Type -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            {{ t.business_type }}
+          </label>
+          <select name="business_type"
+            class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50">
+            {% for val, label in [
+              ('saree','Saree / Textile'),('grocery','Grocery / Kirana'),
+              ('electronics','Electronics'),('pharmacy','Pharmacy'),
+              ('restaurant','Restaurant'),('general','General Retail')
+            ] %}
+            <option value="{{ val }}" {% if tenant.business_type == val %}selected{% endif %}>
+              {{ label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Phone -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            {{ t.phone }}
+          </label>
+          <div class="relative">
+            <i data-lucide="phone" class="absolute left-3.5 top-3 w-4 h-4 text-slate-500"></i>
+            <input type="tel" name="phone" value="{{ tenant.phone or '' }}" maxlength="15"
+              class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white
+                     placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+              placeholder="+91 98765 43210"/>
+          </div>
+        </div>
+
+        <!-- UPI ID -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            {{ t.upi_id }}
+            <span class="text-slate-600 normal-case font-normal ml-1">— for invoice QR</span>
+          </label>
+          <div class="relative">
+            <i data-lucide="smartphone" class="absolute left-3.5 top-3 w-4 h-4 text-slate-500"></i>
+            <input type="text" name="upi_id" value="{{ tenant.upi_id or '' }}" maxlength="100"
+              class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white
+                     placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+              placeholder="yourname@upi"/>
+          </div>
+        </div>
+
+        <!-- GSTIN -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            {{ t.gstin }}
+          </label>
+          <input type="text" name="gstin" value="{{ tenant.gstin or '' }}" maxlength="20"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="22AAAAA0000A1Z5"/>
+        </div>
+
+        <!-- Address -->
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            {{ t.address }}
+          </label>
+          <textarea name="address" rows="2"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all resize-none"
+            placeholder="Shop No., Street, City, State - PIN">{{ tenant.address or '' }}</textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="brand-btn px-6 py-2.5 text-sm mt-5">
+        {{ t.update_profile }}
+      </button>
+    </form>
+  </div>
+
+  <!-- ══ Account Details ══ -->
+  <div class="glass-card p-6 animate-fade-up delay-2">
+    <div class="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
+      <div class="p-2 rounded-xl bg-blue-500/15 text-blue-400">
+        <i data-lucide="user-cog" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-white">Account Details</h2>
+        <p class="text-xs text-slate-500">Your login name and email</p>
+      </div>
+    </div>
+
+    <form method="POST">
+      <input type="hidden" name="action" value="account"/>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            Your Name *
+          </label>
+          <input type="text" name="name" value="{{ current_user.name }}" required maxlength="100"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            Email Address *
+          </label>
+          <input type="email" name="email" value="{{ current_user.email }}" required
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+        </div>
+        <div class="col-span-2">
+          <span class="text-xs text-slate-600">
+            Role: <span class="text-slate-400 font-semibold capitalize">{{ current_user.role }}</span>
+            · Member since {{ current_user.created_at.strftime('%B %Y') }}
+          </span>
+        </div>
+      </div>
+      <button type="submit" class="brand-btn px-6 py-2.5 text-sm mt-5">
+        Update Account
+      </button>
+    </form>
+  </div>
+
+  <!-- ══ Change Password ══ -->
+  <div class="glass-card p-6 animate-fade-up delay-3">
+    <div class="flex items-center gap-3 mb-5 pb-4 border-b border-white/[0.06]">
+      <div class="p-2 rounded-xl bg-green-500/15 text-green-400">
+        <i data-lucide="shield-check" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-white">Change Password</h2>
+        <p class="text-xs text-slate-500">Use a strong, unique password</p>
+      </div>
+    </div>
+
+    <form method="POST">
+      <input type="hidden" name="action" value="password"/>
+      <div class="grid grid-cols-1 gap-4 max-w-md">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            Current Password *
+          </label>
+          <input type="password" name="current_password" required
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="Enter your current password"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            New Password *
+          </label>
+          <input type="password" name="new_password" required minlength="8"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="At least 8 characters"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            Confirm New Password *
+          </label>
+          <input type="password" name="confirm_new_password" required
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="Repeat new password"/>
+        </div>
+      </div>
+      <button type="submit" class="px-6 py-2.5 text-sm mt-5 border border-green-500/30 rounded-xl
+                                   text-green-400 hover:bg-green-500/10 transition-all">
+        Change Password
+      </button>
+    </form>
+  </div>
+
+  <!-- ══ Danger Zone ══ -->
+  <div class="glass-card p-6 border-red-500/20 animate-fade-up delay-3">
+    <div class="flex items-center gap-3 mb-4 pb-4 border-b border-white/[0.06]">
+      <div class="p-2 rounded-xl bg-red-500/15 text-red-400">
+        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-white">Danger Zone</h2>
+        <p class="text-xs text-slate-500">Irreversible actions</p>
+      </div>
+    </div>
+    <p class="text-xs text-slate-500 mb-3">
+      To delete your account and all data, please contact support.
+      This action cannot be undone and all business data will be permanently erased.
+    </p>
+    <button type="button" disabled
+      class="px-4 py-2 text-xs border border-red-500/20 rounded-xl text-red-500/50 cursor-not-allowed">
+      Delete Account (Contact Support)
+    </button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewLogo(input) {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = document.getElementById('logoPreview');
+    const placeholder = document.getElementById('logoPlaceholder');
+    img.src = e.target.result;
+    img.classList.remove('hidden');
+    if (placeholder) placeholder.classList.add('hidden');
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+</script>
+{% endblock %}

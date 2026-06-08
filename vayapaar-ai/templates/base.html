@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth" id="html-root">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Vayapaar-AI Global{% endblock %}</title>
+
+  <!-- Tailwind CSS (CDN — JIT in browser) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50:  '#fef9ec', 100: '#fdf0c8', 200: '#fbe08e', 300: '#f9c94e',
+              400: '#f7b120', 500: '#e8940d', 600: '#c97108', 700: '#a2510c',
+              800: '#853f11', 900: '#6e3313'
+            }
+          },
+          fontFamily: {
+            display: ['Sora', 'sans-serif'],
+            body:    ['DM Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <style>
+    :root {
+      --gradient-primary: linear-gradient(135deg, #f7b120 0%, #e8940d 50%, #c97108 100%);
+      --glass-bg:         rgba(255, 255, 255, 0.05);
+      --glass-border:     rgba(255, 255, 255, 0.10);
+    }
+
+    body { font-family: 'DM Sans', sans-serif; }
+    h1,h2,h3,h4,h5 { font-family: 'Sora', sans-serif; }
+
+    .glass-card {
+      background:             var(--glass-bg);
+      backdrop-filter:        blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border:                 1px solid var(--glass-border);
+      border-radius:          1rem;
+    }
+
+    .brand-btn {
+      background:   var(--gradient-primary);
+      color:        #1a1a1a;
+      font-weight:  600;
+      border-radius: 0.625rem;
+      transition:   opacity 0.2s, transform 0.15s;
+    }
+    .brand-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+
+    .sidebar-link {
+      display:        flex;
+      align-items:    center;
+      gap:            0.75rem;
+      padding:        0.625rem 1rem;
+      border-radius:  0.75rem;
+      font-size:      0.875rem;
+      font-weight:    500;
+      transition:     background 0.2s, color 0.2s;
+      color:          #94a3b8;
+    }
+    .sidebar-link:hover,
+    .sidebar-link.active {
+      background: rgba(247, 177, 32, 0.12);
+      color:      #f7b120;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar          { width: 5px; }
+    ::-webkit-scrollbar-track    { background: transparent; }
+    ::-webkit-scrollbar-thumb    { background: rgba(247,177,32,0.35); border-radius: 99px; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-up          { animation: fadeUp 0.45s ease both; }
+    .delay-1                  { animation-delay: 0.08s; }
+    .delay-2                  { animation-delay: 0.16s; }
+    .delay-3                  { animation-delay: 0.24s; }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100 min-h-screen flex">
+
+{% if current_user.is_authenticated %}
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside class="w-64 shrink-0 h-screen sticky top-0 flex flex-col glass-card rounded-none border-r border-white/[0.06] overflow-y-auto z-30">
+
+  <!-- Logo / Business Name -->
+  <div class="px-5 py-6 border-b border-white/[0.06]">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl brand-btn flex items-center justify-center text-lg font-black select-none shrink-0">V</div>
+      <div class="min-w-0">
+        <div class="text-sm font-bold text-white leading-tight">Vayapaar-AI</div>
+        <div class="text-xs text-slate-400 truncate">{{ current_user.tenant.business_name }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="flex-1 px-3 py-4 space-y-0.5">
+    {# BUG FIX #8: Use request.blueprint for reliable active-state detection #}
+    <a href="{{ url_for('dashboard.index') }}"
+       class="sidebar-link {% if request.blueprint == 'dashboard' %}active{% endif %}">
+      <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.dashboard }}</span>
+    </a>
+    <a href="{{ url_for('inventory.index') }}"
+       class="sidebar-link {% if request.blueprint == 'inventory' %}active{% endif %}">
+      <i data-lucide="boxes" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.inventory }}</span>
+    </a>
+    <a href="{{ url_for('pos.index') }}"
+       class="sidebar-link {% if request.blueprint == 'pos' %}active{% endif %}">
+      <i data-lucide="scan-line" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.pos }}</span>
+    </a>
+    <a href="{{ url_for('finance.index') }}"
+       class="sidebar-link {% if request.blueprint == 'finance' %}active{% endif %}">
+      <i data-lucide="indian-rupee" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.finance }}</span>
+    </a>
+    <a href="{{ url_for('customers.index') }}"
+       class="sidebar-link {% if request.blueprint == 'customers' %}active{% endif %}">
+      <i data-lucide="users" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.customers }}</span>
+    </a>
+    <a href="{{ url_for('settings.index') }}"
+       class="sidebar-link {% if request.blueprint == 'settings' %}active{% endif %}">
+      <i data-lucide="settings" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.settings }}</span>
+    </a>
+  </nav>
+
+  <!-- Language + Theme + Logout -->
+  <div class="px-3 py-4 border-t border-white/[0.06] space-y-2">
+    <!-- Language toggle -->
+    <div class="flex gap-1.5 px-1">
+      {% for lcode, lname in [('en','EN'), ('hi','हि'), ('hinglish','HG')] %}
+      <a href="{{ url_for('set_lang', code=lcode) }}"
+         class="flex-1 text-center text-xs py-1.5 rounded-lg font-medium transition-all
+                {{ 'brand-btn' if lang == lcode else 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white' }}">
+        {{ lname }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- Dark mode toggle -->
+    <button onclick="toggleDark()" class="sidebar-link w-full text-left">
+      <i data-lucide="moon" class="w-4 h-4 shrink-0"></i>
+      <span class="text-xs">{{ t.dark_mode }}</span>
+    </button>
+
+    <!-- Logout -->
+    <a href="{{ url_for('auth.logout') }}" class="sidebar-link text-red-400 hover:text-red-300">
+      <i data-lucide="log-out" class="w-4 h-4 shrink-0"></i>
+      <span>{{ t.logout }}</span>
+    </a>
+  </div>
+</aside>
+{% endif %}
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main class="flex-1 overflow-y-auto min-h-screen">
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="fixed top-4 right-4 z-50 space-y-2 max-w-sm w-full">
+      {% for cat, msg in messages %}
+      <div class="glass-card px-4 py-3 text-sm flex items-start gap-2.5 animate-fade-up shadow-2xl
+                  {% if cat == 'success' %}border-green-500/30 text-green-300
+                  {% elif cat == 'error'  %}border-red-500/30   text-red-300
+                  {% elif cat == 'info'   %}border-blue-500/30  text-blue-300
+                  {% else                 %}border-brand-400/30 text-brand-300{% endif %}">
+        <i data-lucide="{% if cat == 'success' %}check-circle{% elif cat == 'error' %}alert-circle{% else %}info{% endif %}"
+           class="w-4 h-4 shrink-0 mt-0.5"></i>
+        <span>{{ msg }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+  // Initialise Lucide icons after DOM is ready
+  document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+
+  // Dark mode — persisted in localStorage
+  function toggleDark() {
+    const html = document.documentElement;
+    html.classList.toggle('dark');
+    localStorage.setItem('vayapaar_dark', html.classList.contains('dark') ? '1' : '0');
+  }
+  // Apply on load
+  if (localStorage.getItem('vayapaar_dark') === '1') {
+    document.documentElement.classList.add('dark');
+  }
+
+  // BUG FIX #4: Expose CSRF token for fetch() calls in POS/API routes.
+  // The token is set as a cookie by Flask-WTF (see app.py after_request).
+  function getCsrfToken() {
+    const match = document.cookie.match(/csrf_token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  // Helper for authenticated JSON fetch — automatically attaches CSRF + Content-Type
+  async function apiFetch(url, options = {}) {
+    return fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type':  'application/json',
+        'X-CSRFToken':   getCsrfToken(),
+        ...(options.headers || {}),
+      },
+    });
+  }
+
+  // Auto-hide flash messages after 5 s
+  setTimeout(() => {
+    document.querySelectorAll('.fixed.top-4.right-4 > div').forEach(el => {
+      el.style.transition = 'opacity 0.4s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 400);
+    });
+  }, 5000);
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

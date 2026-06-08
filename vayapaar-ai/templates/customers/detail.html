@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}{{ customer.name }} — Khata{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-5xl mx-auto space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-start justify-between gap-4 animate-fade-up">
+    <div class="flex items-center gap-4">
+      <a href="{{ url_for('customers.index') }}"
+         class="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all shrink-0">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      </a>
+      <div class="w-14 h-14 rounded-2xl bg-brand-400/15 flex items-center justify-center
+                  text-brand-400 text-2xl font-black shrink-0">
+        {{ customer.name[0].upper() }}
+      </div>
+      <div>
+        <h1 class="text-xl font-bold text-white">{{ customer.name }}</h1>
+        <div class="flex flex-wrap gap-2 mt-1 text-xs text-slate-500">
+          {% if customer.phone %}
+          <span class="flex items-center gap-1">
+            <i data-lucide="phone" class="w-3 h-3"></i> {{ customer.phone }}
+          </span>
+          {% endif %}
+          {% if customer.email %}
+          <span class="flex items-center gap-1">
+            <i data-lucide="mail" class="w-3 h-3"></i> {{ customer.email }}
+          </span>
+          {% endif %}
+          {% if customer.address %}
+          <span class="flex items-center gap-1">
+            <i data-lucide="map-pin" class="w-3 h-3"></i> {{ customer.address }}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Outstanding Balance -->
+    <div class="glass-card px-5 py-4 text-right shrink-0">
+      <p class="text-xs text-slate-500 mb-1">Outstanding Balance</p>
+      <p class="text-2xl font-black {{ 'text-orange-400' if customer.outstanding > 0 else 'text-green-400' }}">
+        ₹{{ '{:,.2f}'.format(customer.outstanding) }}
+      </p>
+      {% if customer.credit_limit > 0 %}
+      <p class="text-xs text-slate-600 mt-0.5">
+        Limit: ₹{{ '{:,.0f}'.format(customer.credit_limit) }}
+      </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Record Payment -->
+  {% if customer.outstanding > 0 %}
+  <div class="glass-card p-5 border-brand-400/20 bg-brand-400/[0.03] animate-fade-up delay-1">
+    <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+      <i data-lucide="indian-rupee" class="w-4 h-4 text-brand-400"></i>
+      {{ t.pay_now }}
+    </h3>
+    <form method="POST" action="{{ url_for('customers.record_payment', customer_id=customer.id) }}"
+          class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1.5">Amount (₹) *</label>
+        <div class="relative">
+          <span class="absolute left-3 top-2 text-slate-500 text-sm font-bold">₹</span>
+          <input type="number" name="amount" min="1" step="0.01"
+            max="{{ customer.outstanding }}" required
+            class="w-36 bg-white/5 border border-white/10 rounded-xl pl-7 pr-3 py-2 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50"/>
+        </div>
+      </div>
+      <div class="flex-1 min-w-48">
+        <label class="block text-xs text-slate-400 mb-1.5">Note</label>
+        <input type="text" name="note" value="Payment received" maxlength="255"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white
+                 focus:outline-none focus:ring-2 focus:ring-brand-400/50"/>
+      </div>
+      <button type="submit" class="brand-btn px-5 py-2 text-sm shrink-0">
+        Record Payment
+      </button>
+      <!-- Quick amounts -->
+      <div class="flex gap-1.5 w-full">
+        {% for amt in [500, 1000, 2000, 5000] %}
+        {% if amt <= customer.outstanding %}
+        <button type="button" onclick="setAmount({{ amt }})"
+          class="px-3 py-1 text-xs border border-white/10 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+          ₹{{ amt }}
+        </button>
+        {% endif %}
+        {% endfor %}
+        <button type="button" onclick="setAmount({{ customer.outstanding }})"
+          class="px-3 py-1 text-xs border border-brand-400/30 rounded-lg text-brand-400 hover:bg-brand-400/10 transition-all">
+          Full ₹{{ '{:,.0f}'.format(customer.outstanding) }}
+        </button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Two-column: Khata + Sales -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <!-- Khata Ledger -->
+    <div class="glass-card overflow-hidden animate-fade-up delay-2">
+      <div class="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+        <i data-lucide="book-open" class="w-4 h-4 text-brand-400"></i>
+        <h3 class="text-sm font-bold text-white">{{ t.credit_manager }}</h3>
+        {% if entries %}
+        <span class="ml-auto text-xs text-slate-600">{{ entries | length }} entries</span>
+        {% endif %}
+      </div>
+
+      <div class="divide-y divide-white/[0.04] max-h-96 overflow-y-auto">
+        {% for e in entries %}
+        <div class="flex items-center justify-between px-5 py-3 hover:bg-white/[0.025] transition-colors">
+          <div class="min-w-0">
+            <div class="text-sm text-white truncate">{{ e.note or '—' }}</div>
+            <div class="text-xs text-slate-600">{{ e.created_at.strftime('%d %b %Y · %H:%M') }}</div>
+          </div>
+          <div class="shrink-0 ml-3 font-bold text-sm
+                      {{ 'text-red-400' if e.entry_type == 'debit' else 'text-green-400' }}">
+            {{ '−' if e.entry_type == 'debit' else '+' }}₹{{ '%.2f'|format(e.amount) }}
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-10 text-slate-600">
+          <i data-lucide="book-open" class="w-8 h-8 mx-auto mb-2 opacity-20"></i>
+          <p class="text-sm">No ledger entries yet.</p>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Running balance footer -->
+      {% if entries %}
+      <div class="px-5 py-3 border-t border-white/[0.06] bg-white/[0.02] flex justify-between items-center">
+        <span class="text-xs text-slate-500">Current Balance</span>
+        <span class="text-sm font-bold {{ 'text-orange-400' if customer.outstanding > 0 else 'text-green-400' }}">
+          ₹{{ '%.2f'|format(customer.outstanding) }}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Sales History -->
+    <div class="glass-card overflow-hidden animate-fade-up delay-3">
+      <div class="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2">
+        <i data-lucide="receipt" class="w-4 h-4 text-brand-400"></i>
+        <h3 class="text-sm font-bold text-white">Purchase History</h3>
+        {% if sales %}
+        <span class="ml-auto text-xs text-slate-600">{{ sales | length }} orders</span>
+        {% endif %}
+      </div>
+
+      <div class="divide-y divide-white/[0.04] max-h-96 overflow-y-auto">
+        {% for s in sales %}
+        <div class="flex items-center justify-between px-5 py-3 hover:bg-white/[0.025] transition-colors group">
+          <div>
+            <div class="font-mono text-xs text-brand-400">{{ s.invoice_no }}</div>
+            <div class="text-xs text-slate-600 mt-0.5">
+              {{ s.created_at.strftime('%d %b %Y · %H:%M') }}
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+              {% if s.payment_method == 'cash'  %}bg-green-500/15  text-green-300
+              {% elif s.payment_method == 'upi' %}bg-blue-500/15   text-blue-300
+              {% else                           %}bg-orange-500/15 text-orange-300{% endif %}">
+              {{ s.payment_method | upper }}
+            </span>
+            <span class="font-bold text-white text-sm">₹{{ '%.2f'|format(s.total) }}</span>
+            <a href="{{ url_for('pos.invoice', sale_id=s.id) }}" target="_blank"
+               class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500 hover:text-brand-400 p-1 rounded-lg hover:bg-white/5">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-10 text-slate-600">
+          <i data-lucide="shopping-bag" class="w-8 h-8 mx-auto mb-2 opacity-20"></i>
+          <p class="text-sm">No purchases yet.</p>
+          <a href="{{ url_for('pos.index') }}" class="text-brand-400 text-xs hover:underline mt-1 inline-block">
+            Create a sale for this customer →
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setAmount(val) {
+  const input = document.querySelector('input[name="amount"]');
+  if (input) input.value = val;
+}
+</script>
+{% endblock %}

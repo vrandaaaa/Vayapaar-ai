@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}Sign In — Vayapaar-AI Global{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+     style="background: radial-gradient(ellipse 90% 70% at 50% -10%, rgba(247,177,32,0.15) 0%, transparent 65%), #020617;">
+
+  <!-- Decorative orbs -->
+  <div class="absolute top-1/4 left-1/4 w-64 h-64 rounded-full blur-3xl opacity-10"
+       style="background: radial-gradient(circle, #f7b120, transparent);" aria-hidden="true"></div>
+  <div class="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full blur-3xl opacity-8"
+       style="background: radial-gradient(circle, #3b82f6, transparent);" aria-hidden="true"></div>
+
+  <div class="w-full max-w-md relative z-10 animate-fade-up">
+
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 rounded-2xl brand-btn flex items-center justify-center text-3xl font-black mx-auto mb-4 shadow-2xl"
+           style="box-shadow: 0 8px 32px rgba(247,177,32,0.35);">V</div>
+      <h1 class="text-3xl font-bold text-white tracking-tight">Welcome back</h1>
+      <p class="text-slate-400 text-sm mt-1.5">Sign in to your business dashboard</p>
+    </div>
+
+    <div class="glass-card p-8" style="border-color: rgba(255,255,255,0.1);">
+      <form method="POST" novalidate>
+
+        <div class="space-y-4">
+          <!-- Email -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">Email Address</label>
+            <div class="relative">
+              <i data-lucide="mail" class="absolute left-3.5 top-3 w-4 h-4 text-slate-500"></i>
+              <input type="email" name="email" required autocomplete="email"
+                class="w-full bg-white/[0.06] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white
+                       placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50
+                       focus:border-brand-400/40 transition-all"
+                placeholder="you@yourbusiness.com"/>
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wide">Password</label>
+            <div class="relative">
+              <i data-lucide="lock" class="absolute left-3.5 top-3 w-4 h-4 text-slate-500"></i>
+              <input type="password" name="password" id="pwdField" required autocomplete="current-password"
+                class="w-full bg-white/[0.06] border border-white/10 rounded-xl pl-10 pr-11 py-2.5 text-sm text-white
+                       placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50
+                       focus:border-brand-400/40 transition-all"
+                placeholder="••••••••"/>
+              <button type="button" onclick="togglePwd()" tabindex="-1"
+                class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+                <i data-lucide="eye" class="w-4 h-4" id="eyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Remember + Forgot -->
+          <div class="flex items-center justify-between pt-1">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" name="remember"
+                class="w-4 h-4 rounded border-white/20 bg-white/5 accent-brand-400"/>
+              <span class="text-xs text-slate-400">Remember me</span>
+            </label>
+            <a href="{{ url_for('auth.forgot_password') }}"
+               class="text-xs text-brand-400 hover:text-brand-300 hover:underline transition-colors">
+              Forgot password?
+            </a>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit"
+          class="brand-btn w-full py-3 mt-6 text-sm font-bold flex items-center justify-center gap-2"
+          style="box-shadow: 0 4px 20px rgba(247,177,32,0.25);">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          Sign In to Dashboard
+        </button>
+
+        <div class="relative my-5">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-white/[0.06]"></div>
+          </div>
+          <div class="relative flex justify-center text-xs text-slate-600">
+            <span class="bg-slate-950 px-3">New to Vayapaar-AI?</span>
+          </div>
+        </div>
+
+        <a href="{{ url_for('auth.register') }}"
+           class="w-full py-2.5 text-sm font-medium border border-white/10 rounded-xl text-slate-300
+                  hover:bg-white/5 hover:border-white/20 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="store" class="w-4 h-4 text-brand-400"></i>
+          Create Your Business Account
+        </a>
+      </form>
+    </div>
+
+    <p class="text-center text-xs text-slate-600 mt-4">
+      Vayapaar-AI Global · Business-in-a-Box Platform
+    </p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePwd() {
+  const f = document.getElementById('pwdField');
+  const i = document.getElementById('eyeIcon');
+  if (f.type === 'password') {
+    f.type = 'text';
+    i.setAttribute('data-lucide', 'eye-off');
+  } else {
+    f.type = 'password';
+    i.setAttribute('data-lucide', 'eye');
+  }
+  lucide.createIcons();
+}
+</script>
+{% endblock %}

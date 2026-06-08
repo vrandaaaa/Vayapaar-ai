@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}Inventory — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+    <div>
+      <h1 class="text-2xl font-bold text-white">{{ t.inventory }}</h1>
+      <p class="text-slate-400 text-sm">
+        {{ products | length }} active product{{ 's' if products | length != 1 }}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{{ url_for('inventory.add') }}"
+         class="brand-btn px-4 py-2.5 text-sm flex items-center gap-2">
+        <i data-lucide="plus" class="w-4 h-4"></i> {{ t.add_product }}
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters + Add Category -->
+  <div class="glass-card p-4 animate-fade-up delay-1">
+    <form method="GET" class="flex flex-wrap gap-3">
+      <div class="relative flex-1 min-w-48">
+        <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-500"></i>
+        <input type="text" name="q" value="{{ q }}" placeholder="{{ t.search }}"
+          class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white
+                 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50"/>
+      </div>
+      <select name="cat"
+        class="bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white
+               focus:outline-none focus:ring-2 focus:ring-brand-400/50">
+        <option value="">All Categories</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {% if cat_filter == c.id|string %}selected{% endif %}>
+          {{ c.name }}
+        </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="brand-btn px-4 py-2 text-sm">Filter</button>
+    </form>
+
+    <!-- Add Category inline -->
+    <form method="POST" action="{{ url_for('inventory.add_category') }}"
+          class="flex gap-2 mt-3 pt-3 border-t border-white/5">
+      <input type="text" name="name" placeholder="+ New category name"
+        class="bg-white/5 border border-white/10 rounded-xl px-4 py-1.5 text-sm text-white placeholder-slate-600
+               focus:outline-none focus:ring-1 focus:ring-brand-400/50 w-52"/>
+      <button type="submit"
+        class="px-3 py-1.5 border border-white/10 rounded-xl text-xs text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+        Add Category
+      </button>
+      <!-- Existing categories pills -->
+      <div class="flex flex-wrap gap-1.5 ml-2">
+        {% for c in categories %}
+        <span class="px-2.5 py-1 bg-white/5 rounded-full text-xs text-slate-400">{{ c.name }}</span>
+        {% endfor %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Product Table -->
+  <div class="glass-card overflow-hidden animate-fade-up delay-2">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-white/[0.06] text-xs text-slate-500 uppercase tracking-wide">
+            <th class="text-left px-5 py-3.5">Product</th>
+            <th class="text-left px-4 py-3.5 hidden md:table-cell">Category</th>
+            <th class="text-left px-4 py-3.5 hidden lg:table-cell">Type</th>
+            <th class="text-right px-4 py-3.5">Cost</th>
+            <th class="text-right px-4 py-3.5">Price</th>
+            <th class="text-right px-4 py-3.5">Stock</th>
+            <th class="text-right px-4 py-3.5 hidden lg:table-cell">Margin</th>
+            <th class="px-4 py-3.5 w-20"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/[0.04]">
+          {% for p in products %}
+          {% set margin = ((p.selling_price - p.cost_price) / p.selling_price * 100) if p.selling_price > 0 else 0 %}
+          <tr class="hover:bg-white/[0.025] transition-colors group">
+            <td class="px-5 py-3.5">
+              <div class="font-medium text-white group-hover:text-brand-300 transition-colors">
+                {{ p.name }}
+              </div>
+              <div class="text-xs text-slate-500 mt-0.5">
+                {% if p.sku %}SKU: {{ p.sku }}{% endif %}
+                {% if p.barcode %} · {{ p.barcode }}{% endif %}
+                {% if not p.sku and not p.barcode %}—{% endif %}
+              </div>
+            </td>
+            <td class="px-4 py-3.5 text-slate-400 hidden md:table-cell">
+              {{ p.category.name if p.category else '—' }}
+            </td>
+            <td class="px-4 py-3.5 hidden lg:table-cell">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                {% if p.product_type == 'variant'  %}bg-purple-500/15 text-purple-300
+                {% elif p.product_type == 'serial'  %}bg-blue-500/15   text-blue-300
+                {% elif p.product_type == 'expiry'  %}bg-orange-500/15 text-orange-300
+                {% else                             %}bg-white/8       text-slate-300{% endif %}">
+                {{ p.product_type | title }}
+              </span>
+            </td>
+            <td class="px-4 py-3.5 text-right text-slate-400">₹{{ '%.2f'|format(p.cost_price) }}</td>
+            <td class="px-4 py-3.5 text-right font-semibold text-white">₹{{ '%.2f'|format(p.selling_price) }}</td>
+            <td class="px-4 py-3.5 text-right">
+              {% if p.is_low_stock %}
+              <span class="inline-flex items-center gap-1 text-orange-400 font-semibold">
+                <span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+                {{ p.stock_qty }} {{ p.unit }}
+              </span>
+              {% else %}
+              <span class="text-green-400 font-semibold">{{ p.stock_qty }} {{ p.unit }}</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3.5 text-right hidden lg:table-cell">
+              <span class="text-xs font-bold
+                {% if margin >= 30 %}text-green-400
+                {% elif margin >= 15 %}text-brand-400
+                {% else %}text-red-400{% endif %}">
+                {{ '%.1f'|format(margin) }}%
+              </span>
+            </td>
+            <td class="px-4 py-3.5">
+              <div class="flex items-center gap-1.5 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                <a href="{{ url_for('inventory.edit', product_id=p.id) }}"
+                   class="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+                   title="Edit">
+                  <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                </a>
+                <form method="POST" action="{{ url_for('inventory.delete', product_id=p.id) }}"
+                      onsubmit="return confirm('Archive \'{{ p.name }}\'? It will no longer appear in POS or inventory.')">
+                  <button type="submit"
+                    class="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-all"
+                    title="Archive">
+                    <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center py-16 text-slate-600">
+              <i data-lucide="package" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+              <p class="text-sm">No products found.</p>
+              <a href="{{ url_for('inventory.add') }}"
+                 class="text-brand-400 hover:underline text-sm mt-1 inline-block">
+                Add your first product →
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

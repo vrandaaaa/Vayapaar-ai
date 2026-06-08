@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Customers — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-5">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+    <div>
+      <h1 class="text-2xl font-bold text-white">{{ t.customers }}</h1>
+      <p class="text-slate-400 text-sm">
+        {{ customers | length }} registered customer{{ 's' if customers | length != 1 }}
+      </p>
+    </div>
+    <a href="{{ url_for('customers.add') }}"
+       class="brand-btn px-4 py-2.5 text-sm flex items-center gap-2">
+      <i data-lucide="user-plus" class="w-4 h-4"></i> Add Customer
+    </a>
+  </div>
+
+  <!-- Search -->
+  <form method="GET" class="glass-card p-4 animate-fade-up delay-1">
+    <div class="relative">
+      <i data-lucide="search" class="absolute left-3.5 top-2.5 w-4 h-4 text-slate-500"></i>
+      <input type="text" name="q" value="{{ q }}" placeholder="Search by name or phone…"
+        class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white
+               placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50"/>
+    </div>
+  </form>
+
+  <!-- Summary Bar -->
+  {% if customers %}
+  {% set total_outstanding = customers | sum(attribute='outstanding') %}
+  {% if total_outstanding > 0 %}
+  <div class="glass-card px-5 py-3 border-orange-500/20 flex items-center gap-3 animate-fade-up delay-1">
+    <i data-lucide="alert-circle" class="w-4 h-4 text-orange-400 shrink-0"></i>
+    <span class="text-sm text-slate-300">Total outstanding across all customers:</span>
+    <span class="text-sm font-bold text-orange-400">₹{{ '{:,.2f}'.format(total_outstanding) }}</span>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- Customer Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-fade-up delay-2">
+    {% for c in customers %}
+    <a href="{{ url_for('customers.detail', customer_id=c.id) }}"
+       class="glass-card p-5 hover:border-brand-400/25 hover:bg-brand-400/[0.04] transition-all group">
+
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-brand-400/15 flex items-center justify-center
+                      text-brand-400 font-black text-lg shrink-0 group-hover:scale-105 transition-transform">
+            {{ c.name[0].upper() }}
+          </div>
+          <div class="min-w-0">
+            <div class="font-semibold text-white group-hover:text-brand-300 transition-colors truncate">
+              {{ c.name }}
+            </div>
+            <div class="text-xs text-slate-500 truncate">
+              {{ c.phone or c.email or 'No contact info' }}
+            </div>
+          </div>
+        </div>
+
+        {% if c.outstanding > 0 %}
+        <div class="text-right shrink-0 ml-2">
+          <div class="text-xs text-slate-500">Outstanding</div>
+          <div class="text-sm font-bold text-orange-400">₹{{ '{:,.0f}'.format(c.outstanding) }}</div>
+        </div>
+        {% else %}
+        <div class="p-1.5 rounded-lg bg-green-500/10 shrink-0">
+          <i data-lucide="check-circle" class="w-4 h-4 text-green-400"></i>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if c.credit_limit > 0 %}
+      {% set used_pct = [(c.outstanding / c.credit_limit * 100), 100] | min %}
+      <div>
+        <div class="flex justify-between text-xs text-slate-600 mb-1">
+          <span>Credit used</span>
+          <span>{{ '%.0f'|format(used_pct) }}% of ₹{{ '{:,.0f}'.format(c.credit_limit) }}</span>
+        </div>
+        <div class="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+          <div class="h-full rounded-full transition-all
+                      {{ 'bg-red-400' if used_pct >= 80 else 'bg-brand-400' if used_pct >= 50 else 'bg-green-400' }}"
+               style="width: {{ used_pct }}%"></div>
+        </div>
+      </div>
+      {% else %}
+      <div class="flex items-center gap-1.5 text-xs text-slate-600">
+        <i data-lucide="shopping-bag" class="w-3 h-3"></i>
+        View purchase history →
+      </div>
+      {% endif %}
+    </a>
+    {% else %}
+    <div class="col-span-3 glass-card p-14 text-center text-slate-600">
+      <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-20"></i>
+      <p class="text-sm mb-2">No customers yet.</p>
+      <a href="{{ url_for('customers.add') }}"
+         class="text-brand-400 hover:underline text-sm">Add your first customer →</a>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

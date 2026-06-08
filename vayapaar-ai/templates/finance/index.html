@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% block title %}Finance — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+    <div>
+      <h1 class="text-2xl font-bold text-white">{{ t.finance }}</h1>
+      <p class="text-slate-400 text-sm">Profit & Loss · COGS · Cash Flow</p>
+    </div>
+    <!-- Period tabs -->
+    <div class="flex gap-1 bg-white/[0.04] rounded-xl p-1 border border-white/[0.06]">
+      {% for p, label in [('today','Today'),('week','7 Days'),('month','Month'),('year','Year')] %}
+      <a href="?period={{ p }}"
+         class="px-3 py-1.5 text-xs rounded-lg font-semibold transition-all
+                {{ 'brand-btn' if period == p else 'text-slate-400 hover:text-white' }}">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- P&L Cards -->
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+    {% set cards = [
+      ('Revenue',         revenue,           'trending-up',   'text-green-400',  'from-green-500/8',   'Total invoiced'),
+      ('Cost of Goods',   cogs,              'shopping-bag',  'text-red-400',    'from-red-500/8',     'COGS snapshot'),
+      ('Gross Profit',    gross_profit,      'bar-chart-2',   'text-blue-400',   'from-blue-500/8',    'Revenue − COGS'),
+      ('Net Profit',      net_profit,        'zap',           'text-brand-400',  'from-brand-400/8',   '−15% opex'),
+    ] %}
+    {% for label, value, icon, color, grad, sub in cards %}
+    <div class="glass-card p-5 bg-gradient-to-br {{ grad }} to-transparent animate-fade-up delay-{{ loop.index }}">
+      <div class="flex items-start justify-between mb-3">
+        <p class="text-xs text-slate-400 font-medium">{{ label }}</p>
+        <div class="p-2 rounded-xl bg-white/5 {{ color }} shrink-0">
+          <i data-lucide="{{ icon }}" class="w-4 h-4"></i>
+        </div>
+      </div>
+      <p class="text-2xl font-bold {{ 'text-red-400' if value < 0 else 'text-white' }}">
+        ₹{{ '{:,.0f}'.format(value | abs) }}{% if value < 0 %} loss{% endif %}
+      </p>
+      <p class="text-xs text-slate-500 mt-1">{{ sub }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Secondary KPIs -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-up delay-2">
+    {% for label, value in [
+      ('Transactions',      num_sales),
+      ('Total Discounts',   '₹' ~ '{:,.0f}'.format(total_discount)),
+      ('GST Collected',     '₹' ~ '{:,.0f}'.format(total_tax)),
+      ('Operating Exp.',    '₹' ~ '{:,.0f}'.format(operating_expense)),
+    ] %}
+    <div class="glass-card px-4 py-3.5">
+      <p class="text-xs text-slate-500">{{ label }}</p>
+      <p class="text-lg font-bold text-white mt-0.5">{{ value }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Charts Row -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- Revenue vs Profit bar+line -->
+    <div class="glass-card p-5 lg:col-span-2 animate-fade-up delay-2">
+      <h3 class="text-sm font-bold text-white mb-4">Revenue vs Profit — 30 Days</h3>
+      <canvas id="finChart" height="120"></canvas>
+    </div>
+    <!-- Payment method doughnut -->
+    <div class="glass-card p-5 animate-fade-up delay-3">
+      <h3 class="text-sm font-bold text-white mb-4">Payment Breakdown</h3>
+      {% if payment_summary %}
+      <canvas id="payChart" height="160"></canvas>
+      <!-- Legend table -->
+      <div class="mt-3 space-y-1.5">
+        {% for p in payment_summary %}
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-400 capitalize">{{ p.method }}</span>
+          <span class="font-semibold text-white">₹{{ '{:,.0f}'.format(p.total) }}
+            <span class="text-slate-500 font-normal">({{ p.count }})</span>
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center h-40 text-slate-600">
+        <i data-lucide="pie-chart" class="w-10 h-10 mb-2 opacity-20"></i>
+        <p class="text-sm">No sales in period</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Transactions Table -->
+  <div class="glass-card overflow-hidden animate-fade-up">
+    <div class="px-5 py-4 border-b border-white/[0.06] flex items-center justify-between">
+      <h3 class="text-sm font-bold text-white">Recent Transactions</h3>
+      <span class="text-xs text-slate-500 bg-white/5 px-2.5 py-1 rounded-lg">
+        {{ recent_sales | length }} records
+      </span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-xs text-slate-500 uppercase tracking-wide border-b border-white/[0.04]">
+            <th class="text-left px-5 py-3">Invoice</th>
+            <th class="text-left px-4 py-3 hidden md:table-cell">Date & Time</th>
+            <th class="text-left px-4 py-3">Customer</th>
+            <th class="text-right px-4 py-3 hidden lg:table-cell">Subtotal</th>
+            <th class="text-right px-4 py-3 hidden lg:table-cell">Discount</th>
+            <th class="text-right px-4 py-3 hidden lg:table-cell">GST</th>
+            <th class="text-right px-4 py-3">Total</th>
+            <th class="text-left px-4 py-3">Payment</th>
+            <th class="px-4 py-3 w-10"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/[0.03]">
+          {% for s in recent_sales %}
+          <tr class="hover:bg-white/[0.025] transition-colors group">
+            <td class="px-5 py-3 font-mono text-xs text-brand-400">{{ s.invoice_no }}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs hidden md:table-cell">
+              {{ s.created_at.strftime('%d %b %Y · %H:%M') }}
+            </td>
+            <td class="px-4 py-3 text-slate-300 text-xs">
+              {{ s.customer.name if s.customer else '—' }}
+            </td>
+            <td class="px-4 py-3 text-right text-slate-400 hidden lg:table-cell">
+              ₹{{ '%.2f'|format(s.subtotal) }}
+            </td>
+            <td class="px-4 py-3 text-right text-red-400 hidden lg:table-cell">
+              {% if s.discount > 0 %}-₹{{ '%.2f'|format(s.discount) }}{% else %}—{% endif %}
+            </td>
+            <td class="px-4 py-3 text-right text-slate-500 hidden lg:table-cell">
+              ₹{{ '%.2f'|format(s.tax) }}
+            </td>
+            <td class="px-4 py-3 text-right font-bold text-white">₹{{ '%.2f'|format(s.total) }}</td>
+            <td class="px-4 py-3">
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                {% if s.payment_method == 'cash'   %}bg-green-500/15  text-green-300
+                {% elif s.payment_method == 'upi'  %}bg-blue-500/15   text-blue-300
+                {% else                            %}bg-orange-500/15 text-orange-300{% endif %}">
+                {{ s.payment_method | upper }}
+              </span>
+            </td>
+            <td class="px-4 py-3">
+              <a href="{{ url_for('pos.invoice', sale_id=s.id) }}" target="_blank"
+                 class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-500
+                        hover:text-brand-400 p-1.5 rounded-lg hover:bg-white/5 inline-block">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center py-12 text-slate-600 text-sm">
+              No transactions in this period.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const daily      = {{ daily | tojson }};
+const paySummary = {{ payment_summary | tojson }};
+
+// ── Revenue vs Profit ─────────────────────────────────────────────────────
+new Chart(document.getElementById('finChart'), {
+  data: {
+    labels:   daily.map(d => d.date),
+    datasets: [
+      {
+        type:            'bar',
+        label:           'Revenue',
+        data:            daily.map(d => d.revenue),
+        backgroundColor: 'rgba(247,177,32,0.5)',
+        borderRadius:    3,
+        order:           2,
+      },
+      {
+        type:            'line',
+        label:           'Profit',
+        data:            daily.map(d => d.profit),
+        borderColor:     '#10b981',
+        backgroundColor: 'rgba(16,185,129,0.08)',
+        borderWidth:     2,
+        pointRadius:     2,
+        fill:            true,
+        tension:         0.4,
+        order:           1,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#94a3b8', font: { size: 11 }, padding: 12, boxWidth: 10 } },
+      tooltip: {
+        backgroundColor: 'rgba(2,6,23,0.9)',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        callbacks: { label: ctx => '  ₹' + ctx.parsed.y.toLocaleString('en-IN') }
+      }
+    },
+    scales: {
+      x: {
+        grid:  { color: 'rgba(255,255,255,0.03)' },
+        ticks: { color: '#475569', maxTicksLimit: 10, font: { size: 10 } }
+      },
+      y: {
+        grid:  { color: 'rgba(255,255,255,0.03)' },
+        ticks: {
+          color: '#475569', font: { size: 10 },
+          callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(1)+'k' : v)
+        }
+      }
+    }
+  }
+});
+
+// ── Payment Doughnut ──────────────────────────────────────────────────────
+if (paySummary.length && document.getElementById('payChart')) {
+  new Chart(document.getElementById('payChart'), {
+    type: 'doughnut',
+    data: {
+      labels:   paySummary.map(p => p.method.toUpperCase()),
+      datasets: [{
+        data:            paySummary.map(p => p.total),
+        backgroundColor: ['#10b981','#3b82f6','#f97316'],
+        borderWidth:     0,
+        hoverOffset:     6,
+      }]
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => '  ₹' + ctx.parsed.toLocaleString('en-IN') }
+        }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

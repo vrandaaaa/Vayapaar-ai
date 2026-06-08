@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Invoice {{ sale.invoice_no }}</title>
+  <style>
+    /* ── Reset ─────────────────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Base ──────────────────────────────────────────── */
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      color: #111;
+      background: #fff;
+      width: 80mm;
+      max-width: 80mm;
+      margin: 0 auto;
+      padding: 8px 6px 16px;
+    }
+
+    /* ── Typography ────────────────────────────────────── */
+    .center  { text-align: center; }
+    .right   { text-align: right; }
+    .bold    { font-weight: bold; }
+    .small   { font-size: 10px; color: #555; }
+    h1       { font-size: 15px; font-weight: 900; letter-spacing: -0.3px; }
+    h2       { font-size: 12px; font-weight: bold; }
+
+    /* ── Dividers ───────────────────────────────────────── */
+    .divider       { border: none; border-top: 1px dashed #aaa; margin: 6px 0; }
+    .divider-solid { border: none; border-top: 1px solid #333; margin: 4px 0; }
+
+    /* ── Logo ───────────────────────────────────────────── */
+    .logo { max-width: 60px; max-height: 56px; display: block; margin: 0 auto 5px; }
+
+    /* ── Items Table ────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; }
+    td, th {
+      padding: 2px 1px;
+      vertical-align: top;
+      font-size: 11px;
+    }
+    th { font-weight: bold; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .item-name  { width: 40%; }
+    .item-qty   { width: 15%; text-align: right; }
+    .item-rate  { width: 22%; text-align: right; }
+    .item-total { width: 23%; text-align: right; }
+
+    /* ── QR ─────────────────────────────────────────────── */
+    .qr {
+      display: block;
+      margin: 6px auto;
+      width: 72px;
+      height: 72px;
+      image-rendering: pixelated;
+    }
+
+    /* ── Print controls (hidden in print) ──────────────── */
+    .no-print {
+      margin-top: 14px;
+      text-align: center;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { margin: 0; padding: 4px 4px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Business Header ── -->
+  <div class="center" style="margin-bottom: 6px;">
+    {% if tenant.logo_url %}
+    <img src="{{ tenant.logo_url }}" class="logo" alt="{{ tenant.business_name }} logo"/>
+    {% endif %}
+    <h1>{{ tenant.business_name }}</h1>
+    {% if tenant.business_type %}
+    <div class="small">{{ tenant.business_type | title }}</div>
+    {% endif %}
+    {% if tenant.address %}
+    <div class="small">{{ tenant.address }}</div>
+    {% endif %}
+    {% if tenant.phone %}
+    <div class="small">Ph: {{ tenant.phone }}</div>
+    {% endif %}
+    {% if tenant.gstin %}
+    <div class="small">GSTIN: {{ tenant.gstin }}</div>
+    {% endif %}
+  </div>
+
+  <hr class="divider-solid"/>
+
+  <!-- ── Invoice Meta ── -->
+  <div style="margin: 4px 0;">
+    <div class="bold">INVOICE #{{ sale.invoice_no }}</div>
+    <div class="small">Date: {{ sale.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+    <div class="small">Payment: {{ sale.payment_method.upper() }}
+      {% if sale.payment_status == 'credit' %}
+      <span style="color:#e97316;">(CREDIT)</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if customer %}
+  <hr class="divider"/>
+  <div style="margin: 3px 0;">
+    <div class="bold">Bill To:</div>
+    <div>{{ customer.name }}</div>
+    {% if customer.phone %}<div class="small">{{ customer.phone }}</div>{% endif %}
+    {% if customer.address %}<div class="small">{{ customer.address }}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  <hr class="divider-solid"/>
+
+  <!-- ── Items ── -->
+  <table>
+    <thead>
+      <tr>
+        <th class="item-name">Item</th>
+        <th class="item-qty">Qty</th>
+        <th class="item-rate">Rate</th>
+        <th class="item-total">Amt</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="4"><hr class="divider" style="margin:2px 0"/></td></tr>
+      {% for item in sale.items %}
+      <tr>
+        <td class="item-name">{{ item.display_name }}</td>
+        <td class="item-qty">{{ item.qty }}</td>
+        <td class="item-rate">{{ '%.2f'|format(item.unit_price) }}</td>
+        <td class="item-total">{{ '%.2f'|format(item.line_total) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <hr class="divider-solid"/>
+
+  <!-- ── Totals ── -->
+  <table>
+    <tr>
+      <td>Subtotal</td>
+      <td class="right">₹{{ '%.2f'|format(sale.subtotal) }}</td>
+    </tr>
+    {% if sale.discount > 0 %}
+    <tr>
+      <td>Discount</td>
+      <td class="right" style="color:#dc2626;">-₹{{ '%.2f'|format(sale.discount) }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td class="small">GST (18%)</td>
+      <td class="right small">₹{{ '%.2f'|format(sale.tax) }}</td>
+    </tr>
+    <tr>
+      <td colspan="2"><hr class="divider" style="margin:3px 0"/></td>
+    </tr>
+    <tr>
+      <td class="bold" style="font-size:13px;">TOTAL</td>
+      <td class="right bold" style="font-size:13px;">₹{{ '%.2f'|format(sale.total) }}</td>
+    </tr>
+    {% if sale.payment_status == 'credit' %}
+    <tr>
+      <td class="small" style="color:#e97316;">Amount Due</td>
+      <td class="right small" style="color:#e97316;">₹{{ '%.2f'|format(sale.total) }}</td>
+    </tr>
+    {% endif %}
+  </table>
+
+  <hr class="divider"/>
+
+  <!-- ── QR Code for UPI ── -->
+  {% if qr_code %}
+  <div class="center" style="margin: 4px 0;">
+    <div class="small bold">Scan to Pay via UPI</div>
+    <img src="data:image/png;base64,{{ qr_code }}" class="qr" alt="UPI QR Code"/>
+    <div class="small">{{ tenant.upi_id }}</div>
+  </div>
+  <hr class="divider"/>
+  {% endif %}
+
+  <!-- ── Footer ── -->
+  <div class="center small" style="margin-top:4px; line-height:1.5;">
+    <div class="bold" style="font-size:11px;">Thank you for your business!</div>
+    <div>Goods once sold will not be returned.</div>
+    <div style="margin-top:4px; color:#888;">Powered by Vayapaar-AI Global</div>
+  </div>
+
+  <!-- ── Print Button (screen only) ── -->
+  <div class="no-print">
+    <button onclick="window.print()"
+      style="background: #f7b120; border: none; border-radius: 8px; padding: 8px 22px;
+             font-weight: bold; font-size: 13px; cursor: pointer; color: #1a1a1a;">
+      🖨️ Print Invoice
+    </button>
+    <button onclick="window.close()"
+      style="margin-left: 8px; background: transparent; border: 1px solid #ccc;
+             border-radius: 8px; padding: 8px 16px; font-size: 12px; cursor: pointer; color: #555;">
+      Close
+    </button>
+  </div>
+
+</body>
+</html>

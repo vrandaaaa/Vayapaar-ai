@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}Edit Product — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-2xl mx-auto space-y-5">
+
+  <div class="flex items-center gap-3 animate-fade-up">
+    <a href="{{ url_for('inventory.index') }}"
+       class="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+    </a>
+    <div>
+      <h1 class="text-xl font-bold text-white">Edit Product</h1>
+      <p class="text-slate-400 text-sm truncate max-w-xs">{{ product.name }}</p>
+    </div>
+    <!-- Type badge -->
+    <span class="ml-auto px-3 py-1 rounded-full text-xs font-semibold
+      {% if product.product_type == 'variant' %}bg-purple-500/15 text-purple-300
+      {% elif product.product_type == 'serial'  %}bg-blue-500/15   text-blue-300
+      {% elif product.product_type == 'expiry'  %}bg-orange-500/15 text-orange-300
+      {% else                                   %}bg-white/8       text-slate-300{% endif %}">
+      {{ product.product_type | title }}
+    </span>
+  </div>
+
+  <form method="POST" class="glass-card p-6 space-y-5 animate-fade-up delay-1">
+
+    <div class="grid grid-cols-2 gap-4">
+      <div class="col-span-2">
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Product Name *</label>
+        <input type="text" name="name" value="{{ product.name }}" required maxlength="200"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">SKU</label>
+        <input type="text" name="sku" value="{{ product.sku or '' }}" maxlength="100"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+          placeholder="e.g. BSS-001"/>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Barcode</label>
+        <input type="text" name="barcode" value="{{ product.barcode or '' }}" maxlength="100"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Category</label>
+        <select name="category_id"
+          class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 focus:outline-none focus:ring-2 focus:ring-brand-400/50">
+          <option value="">— None —</option>
+          {% for c in categories %}
+          <option value="{{ c.id }}" {% if product.category_id == c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Unit</label>
+        <select name="unit"
+          class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 focus:outline-none focus:ring-2 focus:ring-brand-400/50">
+          {% for u in ['pcs','kg','g','l','ml','m','ft','box','dozen','pair'] %}
+          <option value="{{ u }}" {% if product.unit == u %}selected{% endif %}>{{ u }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-span-2 border-t border-white/[0.06] pt-4">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Pricing & Stock</h3>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Cost Price (₹)</label>
+        <div class="relative">
+          <span class="absolute left-3.5 top-2.5 text-slate-500 text-sm">₹</span>
+          <input type="number" name="cost_price" step="0.01" min="0" value="{{ product.cost_price }}"
+            class="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            oninput="calcMargin()"/>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Selling Price (₹) *</label>
+        <div class="relative">
+          <span class="absolute left-3.5 top-2.5 text-slate-500 text-sm">₹</span>
+          <input type="number" name="selling_price" step="0.01" min="0.01" value="{{ product.selling_price }}" required
+            class="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            oninput="calcMargin()"/>
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Current Stock</label>
+        <input type="number" name="stock_qty" step="0.01" min="0" value="{{ product.stock_qty }}"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Low Stock Alert ≤</label>
+        <input type="number" name="low_stock_threshold" step="0.01" min="0" value="{{ product.low_stock_threshold }}"
+          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+      </div>
+    </div>
+
+    <!-- Live Margin -->
+    <div id="marginDisplay" class="p-3 rounded-xl bg-brand-400/8 border border-brand-400/20">
+      <span class="text-xs text-slate-400">Current Margin:</span>
+      <span id="marginValue" class="text-sm font-bold text-brand-400 ml-2"></span>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="brand-btn px-6 py-2.5 text-sm">{{ t.save }}</button>
+      <a href="{{ url_for('inventory.index') }}"
+         class="px-6 py-2.5 border border-white/10 rounded-xl text-sm text-slate-400
+                hover:bg-white/5 hover:text-white transition-all">
+        {{ t.cancel }}
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function calcMargin() {
+  const cost = parseFloat(document.querySelector('[name="cost_price"]').value) || 0;
+  const sell = parseFloat(document.querySelector('[name="selling_price"]').value) || 0;
+  const val  = document.getElementById('marginValue');
+  if (sell > 0) {
+    const pct    = ((sell - cost) / sell * 100).toFixed(1);
+    const profit = (sell - cost).toFixed(2);
+    val.textContent = `${pct}% (₹${profit} per unit)`;
+    val.className   = `text-sm font-bold ml-2 ${pct >= 30 ? 'text-green-400' : pct >= 15 ? 'text-brand-400' : 'text-red-400'}`;
+  }
+}
+// Run on load
+calcMargin();
+</script>
+{% endblock %}

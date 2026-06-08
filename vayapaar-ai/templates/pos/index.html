@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% block title %}POS — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-4 flex gap-4" style="height: calc(100vh - 2rem);">
+
+  <!-- ── Left: Search + Cart ── -->
+  <div class="flex-1 flex flex-col gap-4 overflow-hidden min-w-0">
+
+    <!-- Search Panel -->
+    <div class="glass-card p-4 shrink-0">
+      <h2 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+        <i data-lucide="scan-line" class="w-4 h-4 text-brand-400"></i>
+        {{ t.pos }}
+      </h2>
+      <div class="relative">
+        <input type="text" id="productSearch"
+          class="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white
+                 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+          placeholder="Search by name, barcode, or SKU… (or scan barcode)" autofocus/>
+        <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+      </div>
+
+      <!-- Search Results Dropdown -->
+      <div id="searchResults" class="mt-2 space-y-1 max-h-64 overflow-y-auto hidden"></div>
+    </div>
+
+    <!-- Cart -->
+    <div class="glass-card p-4 flex-1 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cart</h3>
+        <button onclick="clearCart()" class="text-xs text-slate-500 hover:text-red-400 transition-colors">
+          Clear all
+        </button>
+      </div>
+      <div id="cartContainer" class="flex-1 overflow-y-auto space-y-2">
+        <div id="cartEmpty" class="text-center py-12 text-slate-500">
+          <i data-lucide="shopping-cart" class="w-10 h-10 mx-auto mb-2 opacity-20"></i>
+          <p class="text-sm">Scan or search a product to begin</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right: Checkout Panel ── -->
+  <div class="w-80 shrink-0 flex flex-col gap-3">
+    <div class="glass-card p-5 flex-1 flex flex-col">
+      <h3 class="text-sm font-bold text-white mb-4">Order Summary</h3>
+
+      <!-- Totals -->
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between text-slate-400">
+          <span>Subtotal</span>
+          <span id="summSubtotal">₹0.00</span>
+        </div>
+        <div class="flex justify-between text-slate-400 items-center">
+          <span>Discount (₹)</span>
+          <input type="number" id="discountInput" value="0" min="0" step="1"
+            class="w-24 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-right text-white text-xs
+                   focus:outline-none focus:ring-1 focus:ring-brand-400/50"
+            oninput="recalc()"/>
+        </div>
+        <div class="flex justify-between text-slate-400">
+          <span>GST (18%)</span>
+          <span id="summTax">₹0.00</span>
+        </div>
+        <div class="border-t border-white/10 pt-2 flex justify-between font-bold text-white text-lg">
+          <span>Total</span>
+          <span id="summTotal" class="text-brand-400">₹0.00</span>
+        </div>
+      </div>
+
+      <!-- Customer search -->
+      <div class="mt-5">
+        <label class="text-xs text-slate-400 block mb-1.5">Customer <span class="text-slate-600">(optional)</span></label>
+        <div class="relative">
+          <input type="text" id="customerSearchInput" placeholder="Type name or phone…"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white
+                   placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-brand-400/50"/>
+          <div id="customerResults" class="absolute top-full mt-1 w-full glass-card z-20 hidden max-h-40 overflow-y-auto"></div>
+        </div>
+        <input type="hidden" id="selectedCustomerId"/>
+        <div id="selectedCustomerDisplay" class="hidden mt-1.5 flex items-center gap-1.5 text-xs text-brand-300">
+          <i data-lucide="user-check" class="w-3 h-3"></i>
+          <span id="selectedCustomerName"></span>
+          <button onclick="clearCustomer()" class="text-slate-500 hover:text-red-400 ml-auto">✕</button>
+        </div>
+      </div>
+
+      <!-- Payment Method -->
+      <div class="mt-5">
+        <label class="text-xs text-slate-400 block mb-2">Payment Method</label>
+        <div class="grid grid-cols-3 gap-2" id="paymentBtns">
+          {% for pm, label in [('cash','💵 Cash'), ('upi','📱 UPI'), ('credit','📒 Credit')] %}
+          <button type="button" onclick="setPayment('{{ pm }}')"
+            class="py-2 rounded-xl border text-xs font-medium transition-all
+                   {% if pm == 'cash' %}bg-brand-400 text-slate-900 border-transparent{% else %}border-white/10 text-slate-400 hover:border-brand-400/40{% endif %}"
+            data-pm="{{ pm }}">
+            {{ label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="flex-1"></div>
+
+      <!-- Items count badge -->
+      <div class="mt-3 text-center">
+        <span id="itemCountBadge" class="text-xs text-slate-500">0 items in cart</span>
+      </div>
+    </div>
+
+    <!-- Complete Sale -->
+    <button onclick="checkout()" id="checkoutBtn"
+      class="brand-btn w-full py-3.5 text-base font-bold flex items-center justify-center gap-2
+             disabled:opacity-40 disabled:cursor-not-allowed disabled:transform-none"
+      disabled>
+      <i data-lucide="check-circle" class="w-5 h-5"></i>
+      Complete Sale
+    </button>
+  </div>
+</div>
+
+<!-- ── Invoice Modal ── -->
+<div id="invoiceModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+  <div class="glass-card w-full max-w-md p-7 animate-fade-up text-center">
+    <div class="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-3">
+      <i data-lucide="check" class="w-7 h-7 text-green-400"></i>
+    </div>
+    <h2 class="text-xl font-bold text-white mb-1">Sale Complete!</h2>
+    <p class="text-sm text-slate-400 mb-1" id="invoiceNoDisplay"></p>
+    <p class="text-2xl font-black text-brand-400 mb-6" id="invoiceTotalDisplay"></p>
+    <div class="flex gap-3">
+      <button onclick="printInvoice()"
+        class="flex-1 brand-btn py-2.5 text-sm flex items-center justify-center gap-2">
+        <i data-lucide="printer" class="w-4 h-4"></i> Print Bill
+      </button>
+      <button onclick="newSale()"
+        class="flex-1 py-2.5 text-sm border border-white/10 rounded-xl text-slate-300 hover:bg-white/5 transition-all">
+        New Sale
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let cart            = [];
+let selectedPayment = 'cash';
+let lastSaleId      = null;
+
+// ── Product Search ─────────────────────────────────────────────────────────
+const searchInput = document.getElementById('productSearch');
+const resultsBox  = document.getElementById('searchResults');
+let searchTimer;
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  const q = searchInput.value.trim();
+  if (!q) { resultsBox.classList.add('hidden'); return; }
+  searchTimer = setTimeout(() => fetchProducts(q), 200);
+});
+
+async function fetchProducts(q) {
+  const res      = await fetch(`/api/products/search?q=${encodeURIComponent(q)}`);
+  const products = await res.json();
+  if (!products.length) { resultsBox.classList.add('hidden'); return; }
+
+  resultsBox.innerHTML = products.map(p => `
+    <div onclick='addToCart(${JSON.stringify(p).replace(/'/g,"&#39;")})'
+      class="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-all">
+      <div class="min-w-0">
+        <div class="text-sm font-medium text-white truncate">${escHtml(p.name)}</div>
+        <div class="text-xs text-slate-400">SKU: ${escHtml(p.sku)||'—'} · Stock: ${p.stock} ${escHtml(p.unit)}</div>
+      </div>
+      <div class="text-sm font-bold text-brand-400 ml-3 shrink-0">₹${p.price.toFixed(2)}</div>
+    </div>`).join('');
+  resultsBox.classList.remove('hidden');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#productSearch') && !e.target.closest('#searchResults')) {
+    resultsBox.classList.add('hidden');
+  }
+});
+
+// ── Cart Logic ─────────────────────────────────────────────────────────────
+function addToCart(product) {
+  const existing = cart.find(i => i.product_id === product.id);
+  if (existing) {
+    existing.qty++;
+    existing.line_total = parseFloat((existing.qty * existing.unit_price).toFixed(2));
+  } else {
+    cart.push({
+      product_id: product.id,
+      name:       product.name,
+      unit_price: product.price,
+      qty:        1,
+      line_total: parseFloat(product.price.toFixed(2)),
+      unit:       product.unit,
+    });
+  }
+  renderCart();
+  searchInput.value = '';
+  resultsBox.classList.add('hidden');
+  searchInput.focus();
+}
+
+function changeQty(idx, delta) {
+  cart[idx].qty = Math.max(1, cart[idx].qty + delta);
+  cart[idx].line_total = parseFloat((cart[idx].qty * cart[idx].unit_price).toFixed(2));
+  renderCart();
+}
+
+function removeItem(idx) {
+  cart.splice(idx, 1);
+  renderCart();
+}
+
+function clearCart() {
+  cart = [];
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById('cartContainer');
+  const empty     = document.getElementById('cartEmpty');
+  const btn       = document.getElementById('checkoutBtn');
+  const badge     = document.getElementById('itemCountBadge');
+
+  const totalQty  = cart.reduce((s, i) => s + i.qty, 0);
+  badge.textContent = `${totalQty} item${totalQty !== 1 ? 's' : ''} in cart`;
+
+  if (!cart.length) {
+    container.innerHTML = '';
+    container.appendChild(empty);
+    empty.style.display = '';
+    btn.disabled = true;
+    recalc();
+    return;
+  }
+
+  empty.style.display = 'none';
+  container.innerHTML = cart.map((item, idx) => `
+    <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.07] transition-colors">
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-white truncate">${escHtml(item.name)}</div>
+        <div class="text-xs text-slate-400">₹${item.unit_price.toFixed(2)} × ${item.qty} ${escHtml(item.unit)}</div>
+      </div>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="changeQty(${idx}, -1)"
+          class="w-6 h-6 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition-colors flex items-center justify-center">−</button>
+        <span class="w-6 text-center text-sm font-medium text-white">${item.qty}</span>
+        <button onclick="changeQty(${idx}, 1)"
+          class="w-6 h-6 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition-colors flex items-center justify-center">+</button>
+      </div>
+      <div class="text-sm font-bold text-brand-400 w-20 text-right shrink-0">₹${item.line_total.toFixed(2)}</div>
+      <button onclick="removeItem(${idx})"
+        class="text-slate-500 hover:text-red-400 transition-colors shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+
+  btn.disabled = false;
+  recalc();
+}
+
+// ── Totals ─────────────────────────────────────────────────────────────────
+function recalc() {
+  const subtotal = parseFloat(cart.reduce((s, i) => s + i.line_total, 0).toFixed(2));
+  const discount = Math.max(0, parseFloat(document.getElementById('discountInput').value) || 0);
+  const taxable  = Math.max(0, subtotal - discount);
+  const tax      = parseFloat((taxable * 0.18).toFixed(2));
+  const total    = parseFloat((taxable + tax).toFixed(2));
+
+  document.getElementById('summSubtotal').textContent = '₹' + subtotal.toFixed(2);
+  document.getElementById('summTax').textContent      = '₹' + tax.toFixed(2);
+  document.getElementById('summTotal').textContent    = '₹' + total.toFixed(2);
+}
+
+// ── Payment Method ─────────────────────────────────────────────────────────
+function setPayment(pm) {
+  selectedPayment = pm;
+  document.querySelectorAll('[data-pm]').forEach(btn => {
+    const active = btn.dataset.pm === pm;
+    btn.className = `py-2 rounded-xl border text-xs font-medium transition-all ${
+      active
+        ? 'bg-brand-400 text-slate-900 border-transparent'
+        : 'border-white/10 text-slate-400 hover:border-brand-400/40'
+    }`;
+  });
+}
+
+// ── Customer Search ────────────────────────────────────────────────────────
+const custInput   = document.getElementById('customerSearchInput');
+const custResults = document.getElementById('customerResults');
+let custTimer;
+
+custInput.addEventListener('input', () => {
+  clearTimeout(custTimer);
+  const q = custInput.value.trim();
+  if (!q) { custResults.classList.add('hidden'); return; }
+  custTimer = setTimeout(() => fetchCustomers(q), 250);
+});
+
+async function fetchCustomers(q) {
+  const res  = await fetch(`/api/customers/search?q=${encodeURIComponent(q)}`);
+  const list = await res.json();
+  if (!list.length) { custResults.classList.add('hidden'); return; }
+
+  custResults.innerHTML = list.map(c => `
+    <div onclick='selectCustomer(${JSON.stringify(c).replace(/'/g,"&#39;")})'
+      class="flex items-center justify-between px-3 py-2 hover:bg-white/10 cursor-pointer text-sm transition-colors">
+      <div>
+        <span class="text-white font-medium">${escHtml(c.name)}</span>
+        <span class="text-slate-400 text-xs ml-2">${escHtml(c.phone)}</span>
+      </div>
+      ${c.outstanding > 0
+        ? `<span class="text-orange-400 text-xs">₹${c.outstanding.toFixed(2)} due</span>`
+        : ''}
+    </div>`).join('');
+  custResults.classList.remove('hidden');
+}
+
+function selectCustomer(c) {
+  document.getElementById('selectedCustomerId').value     = c.id;
+  document.getElementById('selectedCustomerName').textContent = c.name;
+  document.getElementById('selectedCustomerDisplay').classList.remove('hidden');
+  custInput.value = c.name;
+  custResults.classList.add('hidden');
+}
+
+function clearCustomer() {
+  document.getElementById('selectedCustomerId').value = '';
+  custInput.value = '';
+  document.getElementById('selectedCustomerDisplay').classList.add('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#customerSearchInput') && !e.target.closest('#customerResults')) {
+    custResults.classList.add('hidden');
+  }
+});
+
+// ── Checkout ────────────────────────────────────────────────────────────────
+async function checkout() {
+  if (!cart.length) return;
+
+  const btn      = document.getElementById('checkoutBtn');
+  btn.disabled   = true;
+  btn.textContent = 'Processing…';
+
+  const discount    = Math.max(0, parseFloat(document.getElementById('discountInput').value) || 0);
+  const customer_id = document.getElementById('selectedCustomerId').value || null;
+
+  try {
+    // BUG FIX #4: use apiFetch which attaches X-CSRFToken header automatically
+    const res  = await apiFetch('/api/sale/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        items:          cart.map(i => ({ product_id: i.product_id, qty: i.qty, unit_price: i.unit_price })),
+        discount,
+        payment_method: selectedPayment,
+        customer_id,
+      }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      lastSaleId = data.sale_id;
+      document.getElementById('invoiceNoDisplay').textContent    = 'Invoice: ' + data.invoice_no;
+      document.getElementById('invoiceTotalDisplay').textContent = '₹' + data.total.toFixed(2);
+      document.getElementById('invoiceModal').classList.remove('hidden');
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  } catch (err) {
+    alert('Network error. Please try again.');
+  }
+
+  btn.disabled    = false;
+  btn.innerHTML   = '<svg ...></svg> Complete Sale';
+  lucide.createIcons();
+}
+
+function printInvoice() {
+  if (lastSaleId) window.open(`/pos/invoice/${lastSaleId}`, '_blank');
+}
+
+function newSale() {
+  cart = [];
+  lastSaleId = null;
+  document.getElementById('invoiceModal').classList.add('hidden');
+  document.getElementById('discountInput').value = 0;
+  document.getElementById('selectedCustomerId').value = '';
+  custInput.value = '';
+  document.getElementById('selectedCustomerDisplay').classList.add('hidden');
+  setPayment('cash');
+  renderCart();
+  searchInput.focus();
+}
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+{% endblock %}

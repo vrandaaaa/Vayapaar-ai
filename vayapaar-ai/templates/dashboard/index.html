@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+  <!-- ── Header ── -->
+  <div class="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
+    <div>
+      <h1 class="text-2xl font-bold text-white">
+        {{ t.welcome }}, {{ current_user.name.split()[0] }} 👋
+      </h1>
+      <p class="text-slate-400 text-sm mt-0.5">
+        {{ current_user.tenant.business_name }}
+        <span class="text-slate-600 mx-1">·</span>
+        {{ current_user.tenant.business_type | title }}
+        <span class="text-slate-600 mx-1">·</span>
+        {{ now.strftime('%A, %d %B %Y') }}
+      </p>
+    </div>
+    <a href="{{ url_for('pos.index') }}"
+       class="brand-btn px-4 py-2.5 text-sm flex items-center gap-2 shrink-0">
+      <i data-lucide="scan-line" class="w-4 h-4"></i> New Sale
+    </a>
+  </div>
+
+  <!-- ── KPI Cards ── -->
+  <div class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+    {% set kpis = [
+      (t.today_sales,    '₹' ~ '{:,.0f}'.format(today_sales),   'trending-up',  'text-green-400',  'from-green-500/10',  '+0% today'),
+      (t.total_sales,    '₹' ~ '{:,.0f}'.format(month_revenue), 'indian-rupee', 'text-brand-400',  'from-brand-400/10',  'This month'),
+      (t.gross_profit,   '₹' ~ '{:,.0f}'.format(gross_profit),  'bar-chart-2',  'text-blue-400',   'from-blue-500/10',   'After COGS'),
+      (t.net_profit,     '₹' ~ '{:,.0f}'.format(net_profit),    'zap',          'text-purple-400', 'from-purple-500/10', 'After opex'),
+    ] %}
+    {% for label, value, icon, color, grad, sub in kpis %}
+    <div class="glass-card p-5 bg-gradient-to-br {{ grad }} to-transparent animate-fade-up delay-{{ loop.index }}
+                hover:scale-[1.02] transition-transform">
+      <div class="flex items-start justify-between mb-3">
+        <p class="text-xs text-slate-400 font-medium leading-tight">{{ label }}</p>
+        <div class="p-2 rounded-xl bg-white/5 {{ color }} shrink-0">
+          <i data-lucide="{{ icon }}" class="w-4 h-4"></i>
+        </div>
+      </div>
+      <p class="text-2xl font-bold text-white">{{ value }}</p>
+      <p class="text-xs text-slate-500 mt-1">{{ sub }}</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Charts Row ── -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <!-- Sales Trend -->
+    <div class="glass-card p-5 lg:col-span-2 animate-fade-up delay-2">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-bold text-white">7-Day Sales Trend</h2>
+        <span class="text-xs text-slate-500 bg-white/5 px-2.5 py-1 rounded-lg">Last 7 days</span>
+      </div>
+      <canvas id="salesChart" height="110"></canvas>
+    </div>
+
+    <!-- Top Categories -->
+    <div class="glass-card p-5 animate-fade-up delay-3">
+      <h2 class="text-sm font-bold text-white mb-4">{{ t.top_categories }}</h2>
+      {% if top_cats %}
+      <canvas id="catChart" height="180"></canvas>
+      {% else %}
+      <div class="flex flex-col items-center justify-center h-44 text-slate-600">
+        <i data-lucide="pie-chart" class="w-10 h-10 mb-2 opacity-30"></i>
+        <p class="text-sm">No sales data yet</p>
+        <a href="{{ url_for('pos.index') }}" class="text-xs text-brand-400 mt-1 hover:underline">
+          Make your first sale →
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Low Stock Alert ── -->
+  {% if low_stock_items %}
+  <div class="glass-card p-5 border-orange-500/25 animate-fade-up">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></div>
+        <h2 class="text-sm font-bold text-white">{{ t.low_stock }}</h2>
+        <span class="bg-orange-500/20 text-orange-300 text-xs font-bold px-2 py-0.5 rounded-full">
+          {{ low_stock_items|length }}
+        </span>
+      </div>
+      <a href="{{ url_for('inventory.index') }}"
+         class="text-xs text-brand-400 hover:underline">View inventory →</a>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-3">
+      {% for p in low_stock_items %}
+      <a href="{{ url_for('inventory.edit', product_id=p.id) }}"
+         class="bg-orange-500/8 hover:bg-orange-500/15 border border-orange-500/20 rounded-xl p-3 transition-all group">
+        <p class="text-xs font-medium text-white truncate group-hover:text-orange-300 transition-colors">{{ p.name }}</p>
+        <p class="text-xl font-black text-orange-400 mt-1">{{ p.stock_qty }}</p>
+        <p class="text-xs text-slate-500">{{ p.unit }} · min {{ p.low_stock_threshold }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Quick Actions ── -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 animate-fade-up">
+    {% set actions = [
+      (url_for('inventory.add'),     'plus-circle',   'Add Product',     'text-green-400',  'hover:border-green-500/30'),
+      (url_for('customers.add'),     'user-plus',     'Add Customer',    'text-blue-400',   'hover:border-blue-500/30'),
+      (url_for('pos.index'),         'scan-line',     'New Sale',        'text-brand-400',  'hover:border-brand-400/30'),
+      (url_for('finance.index'),     'file-bar-chart','View Reports',    'text-purple-400', 'hover:border-purple-500/30'),
+    ] %}
+    {% for href, icon, label, color, hover in actions %}
+    <a href="{{ href }}"
+       class="glass-card p-4 flex items-center gap-3 {{ hover }} transition-all hover:bg-white/[0.06] group">
+      <div class="p-2 rounded-xl bg-white/5 {{ color }} group-hover:scale-110 transition-transform">
+        <i data-lucide="{{ icon }}" class="w-4 h-4"></i>
+      </div>
+      <span class="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">{{ label }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const salesData = {{ daily_sales | tojson }};
+const topCats   = {{ top_cats | tojson }};
+
+// ── Sales Trend Chart ─────────────────────────────────────────────────────
+new Chart(document.getElementById('salesChart'), {
+  type: 'line',
+  data: {
+    labels:   salesData.map(d => d.date),
+    datasets: [{
+      label:           'Revenue (₹)',
+      data:            salesData.map(d => d.amount),
+      borderColor:     '#f7b120',
+      backgroundColor: 'rgba(247,177,32,0.07)',
+      borderWidth:     2.5,
+      pointBackgroundColor: '#f7b120',
+      pointBorderColor:     '#020617',
+      pointBorderWidth:     2,
+      pointRadius:          4,
+      fill:       true,
+      tension:    0.42,
+    }]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(2,6,23,0.9)',
+        borderColor: 'rgba(247,177,32,0.3)',
+        borderWidth: 1,
+        titleColor: '#94a3b8',
+        bodyColor: '#f7b120',
+        bodyFont: { weight: 'bold', size: 14 },
+        callbacks: { label: ctx => '  ₹' + ctx.parsed.y.toLocaleString('en-IN') }
+      }
+    },
+    scales: {
+      x: {
+        grid:  { color: 'rgba(255,255,255,0.04)' },
+        ticks: { color: '#64748b', font: { size: 11 } }
+      },
+      y: {
+        grid:  { color: 'rgba(255,255,255,0.04)' },
+        ticks: {
+          color: '#64748b', font: { size: 11 },
+          callback: v => '₹' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v)
+        }
+      }
+    }
+  }
+});
+
+// ── Category Doughnut ─────────────────────────────────────────────────────
+if (topCats.length) {
+  new Chart(document.getElementById('catChart'), {
+    type: 'doughnut',
+    data: {
+      labels:   topCats.map(c => c.name),
+      datasets: [{
+        data:            topCats.map(c => c.revenue),
+        backgroundColor: ['#f7b120','#3b82f6','#10b981','#8b5cf6','#f43f5e','#14b8a6'],
+        borderWidth:     0,
+        hoverOffset:     8,
+      }]
+    },
+    options: {
+      cutout: '70%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#94a3b8', font: { size: 11 }, padding: 12, boxWidth: 10 }
+        },
+        tooltip: {
+          callbacks: { label: ctx => '  ₹' + ctx.parsed.toLocaleString('en-IN') }
+        }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

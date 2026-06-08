@@ -1,0 +1,248 @@
+{% extends 'base.html' %}
+{% block title %}Add Product — Vayapaar-AI{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-3xl mx-auto space-y-5">
+
+  <!-- Header -->
+  <div class="flex items-center gap-3 animate-fade-up">
+    <a href="{{ url_for('inventory.index') }}"
+       class="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-all">
+      <i data-lucide="arrow-left" class="w-5 h-5"></i>
+    </a>
+    <div>
+      <h1 class="text-xl font-bold text-white">{{ t.add_product }}</h1>
+      <p class="text-slate-400 text-sm">Fill in the details below to add a new product</p>
+    </div>
+  </div>
+
+  <form method="POST" class="space-y-5 animate-fade-up delay-1">
+
+    <!-- Basic Info -->
+    <div class="glass-card p-6 space-y-4">
+      <h2 class="text-sm font-bold text-white pb-2 border-b border-white/[0.06]">
+        Basic Information
+      </h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+            Product Name *
+          </label>
+          <input type="text" name="name" value="{{ form_data.get('name','') }}" required maxlength="200"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="e.g. Banarasi Silk Saree – Deep Red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">SKU</label>
+          <input type="text" name="sku" value="{{ form_data.get('sku','') }}" maxlength="100"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="BSS-001"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Barcode</label>
+          <input type="text" name="barcode" value="{{ form_data.get('barcode','') }}" maxlength="100"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+            placeholder="8901234567890"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Category</label>
+          <select name="category_id"
+            class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50">
+            <option value="">— No Category —</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Unit</label>
+          <select name="unit"
+            class="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50">
+            {% for u in ['pcs','kg','g','l','ml','m','ft','box','dozen','pair'] %}
+            <option value="{{ u }}">{{ u }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing & Stock -->
+    <div class="glass-card p-6 space-y-4">
+      <h2 class="text-sm font-bold text-white pb-2 border-b border-white/[0.06]">Pricing & Stock</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Cost Price (₹) *</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-2.5 text-slate-500 text-sm font-bold">₹</span>
+            <input type="number" name="cost_price" step="0.01" min="0"
+              value="{{ form_data.get('cost_price','0') }}" required
+              class="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white
+                     focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+              placeholder="0.00" oninput="calcMargin()"/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Selling Price (₹) *</label>
+          <div class="relative">
+            <span class="absolute left-3.5 top-2.5 text-slate-500 text-sm font-bold">₹</span>
+            <input type="number" name="selling_price" step="0.01" min="0.01"
+              value="{{ form_data.get('selling_price','') }}" required
+              class="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white
+                     focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"
+              placeholder="0.00" oninput="calcMargin()"/>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Opening Stock</label>
+          <input type="number" name="stock_qty" step="0.01" min="0"
+            value="{{ form_data.get('stock_qty','0') }}"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Low Stock Alert ≤</label>
+          <input type="number" name="low_stock_threshold" step="0.01" min="0" value="5"
+            class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white
+                   focus:outline-none focus:ring-2 focus:ring-brand-400/50 transition-all"/>
+        </div>
+      </div>
+      <!-- Live Margin Display -->
+      <div id="marginDisplay" class="hidden p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+        <span class="text-xs text-slate-400">Profit Margin:</span>
+        <span id="marginValue" class="text-sm font-bold text-green-400 ml-2"></span>
+        <span class="text-xs text-slate-500 ml-1">(per unit)</span>
+      </div>
+    </div>
+
+    <!-- Product Type -->
+    <div class="glass-card p-6 space-y-4">
+      <h2 class="text-sm font-bold text-white pb-2 border-b border-white/[0.06]">Product Type</h2>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {% for ptype, emoji, label, desc in [
+          ('simple',  '📦', 'Simple',     'Standard single item'),
+          ('variant', '🎨', 'Variant',    'Color, Size, Style…'),
+          ('serial',  '🔢', 'Serial No.', 'Track by serial number'),
+          ('expiry',  '📅', 'Expiry',     'Track expiry dates'),
+        ] %}
+        <label class="cursor-pointer">
+          <input type="radio" name="product_type" value="{{ ptype }}"
+            {% if (form_data.get('product_type', 'simple') == ptype) or (not form_data and ptype == 'simple') %}checked{% endif %}
+            class="sr-only peer" onchange="onTypeChange(this.value)"/>
+          <div class="p-3.5 rounded-xl border border-white/10 text-center transition-all
+                      peer-checked:border-brand-400/50 peer-checked:bg-brand-400/8
+                      hover:bg-white/[0.04] hover:border-white/20">
+            <div class="text-2xl mb-1.5">{{ emoji }}</div>
+            <div class="text-xs font-bold text-white">{{ label }}</div>
+            <div class="text-xs text-slate-500 mt-0.5 leading-tight">{{ desc }}</div>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+
+      <!-- Variant Rows -->
+      <div id="variantSection" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+            Variants / Batches
+          </p>
+          <button type="button" onclick="addVariantRow()"
+            class="text-xs text-brand-400 hover:underline flex items-center gap-1">
+            <i data-lucide="plus" class="w-3 h-3"></i> Add Row
+          </button>
+        </div>
+        <div id="variantRows" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-3 pb-4">
+      <button type="submit" class="brand-btn px-6 py-2.5 text-sm">
+        {{ t.save }}
+      </button>
+      <a href="{{ url_for('inventory.index') }}"
+         class="px-6 py-2.5 border border-white/10 rounded-xl text-sm text-slate-400
+                hover:bg-white/5 hover:text-white transition-all">
+        {{ t.cancel }}
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentType = 'simple';
+
+function onTypeChange(val) {
+  currentType = val;
+  const sec = document.getElementById('variantSection');
+  if (val === 'simple') {
+    sec.classList.add('hidden');
+  } else {
+    sec.classList.remove('hidden');
+    if (document.getElementById('variantRows').children.length === 0) {
+      addVariantRow();
+    }
+  }
+}
+
+function addVariantRow() {
+  const container = document.getElementById('variantRows');
+  const div = document.createElement('div');
+  div.className = 'grid grid-cols-4 gap-2 items-center';
+
+  let col2 = '';
+  if (currentType === 'serial') {
+    col2 = `<input type="text" name="serial_number" placeholder="Serial number"
+      class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600
+             focus:outline-none focus:ring-1 focus:ring-brand-400/50"/>`;
+  } else if (currentType === 'expiry') {
+    col2 = `<input type="date" name="expiry_date"
+      class="bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white
+             focus:outline-none focus:ring-1 focus:ring-brand-400/50"/>`;
+  } else {
+    col2 = `<input type="number" name="extra_price" placeholder="Extra price ₹" step="0.01"
+      class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600
+             focus:outline-none focus:ring-1 focus:ring-brand-400/50"/>`;
+  }
+
+  div.innerHTML = `
+    <input type="text" name="variant_name"
+      placeholder="${currentType === 'variant' ? 'e.g. Red / XL' : currentType === 'serial' ? 'Description' : 'Batch name'}"
+      class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600
+             focus:outline-none focus:ring-1 focus:ring-brand-400/50"/>
+    ${col2}
+    <input type="number" name="variant_qty" placeholder="Qty" step="0.01" min="0"
+      class="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600
+             focus:outline-none focus:ring-1 focus:ring-brand-400/50"/>
+    <button type="button" onclick="this.parentElement.remove()"
+      class="flex justify-center text-slate-500 hover:text-red-400 transition-colors">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>`;
+  container.appendChild(div);
+  lucide.createIcons();
+}
+
+function calcMargin() {
+  const cost  = parseFloat(document.querySelector('[name="cost_price"]').value)  || 0;
+  const sell  = parseFloat(document.querySelector('[name="selling_price"]').value) || 0;
+  const disp  = document.getElementById('marginDisplay');
+  const val   = document.getElementById('marginValue');
+
+  if (sell > 0) {
+    const pct    = ((sell - cost) / sell * 100).toFixed(1);
+    const profit = (sell - cost).toFixed(2);
+    val.textContent = `${pct}%  (₹${profit})`;
+    val.className   = `text-sm font-bold ml-2 ${pct >= 30 ? 'text-green-400' : pct >= 15 ? 'text-brand-400' : 'text-red-400'}`;
+    disp.classList.remove('hidden');
+  } else {
+    disp.classList.add('hidden');
+  }
+}
+</script>
+{% endblock %}
